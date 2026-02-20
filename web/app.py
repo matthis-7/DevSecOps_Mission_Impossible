@@ -71,7 +71,7 @@ def fetch():
 # Admin protected by static token (still bad)
 @app.get("/admin")
 def admin():
-<<<<<<< HEAD
+
     # On lit le header "Authorization" au lieu de l'URL
     auth_header = request.headers.get("Authorization", "")
     expected_token = f"Bearer {os.getenv('ADMIN_TOKEN', '')}"
@@ -83,15 +83,7 @@ def admin():
         "admin": True,
         "flag_supply_chain": os.getenv("FLAG_SUPPLY", "FLAG{missing}"),
         "message": "Authentication secured via Header"
-=======
-    token = request.args.get("token", "")
-    if token != os.getenv("ADMIN_TOKEN", ""):
-        abort(403)
-    return jsonify({
-        "admin": True,
-        "flag_supply_chain": os.getenv("FLAG_SUPPLY", "FLAG{missing}"),
-        "hint": "Try auditing the pipeline scripts & dependencies. Also check internal services.",
->>>>>>> fa5f7a0 (Setup local repo for project)
+
     })
 
 @app.get("/docs")
