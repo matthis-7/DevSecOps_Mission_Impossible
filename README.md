@@ -50,9 +50,12 @@ Indice : un service interne existe sur le réseau Docker, et l’app fait des re
 
 **Flag attendu :** `FLAG{ssrf_reached_vault}`
 
+<<<<<<< HEAD
 Solution:
 http://localhost:5001/fetch?url=http://vault:7000/debug
 
+=======
+>>>>>>> fa5f7a0 (Setup local repo for project)
 ---
 
 ### M2 — Weak admin auth (15 pts)
@@ -61,10 +64,13 @@ Accéder à `/admin` et récupérer `FLAG{supply_chain_guardian}`.
 
 Piste : d’où vient le token ? (secrets, env, fichiers, logs, build context)
 
+<<<<<<< HEAD
 Solution :
 docker exec -it devsecops_mission_impossible-web-1 cat .env -> se trouve le tocken admin puis
 http://vault:7000/secret?token=bSXdxNlOVFk8tEPgmqRWNwOibH6wxJVx
 
+=======
+>>>>>>> fa5f7a0 (Setup local repo for project)
 ---
 
 ### M3 — Supply chain risks (25 pts)
@@ -82,6 +88,7 @@ Identifier **5 risques** dans la CI / pipeline :
 - pas de provenance
 
 Livrer une liste structurée risque → impact → mitigation.
+<<<<<<< HEAD
 1. Utilisation du tag latest pour l'image Docker
 
 Risque : Le pipeline build l'image avec docker build -t mycorp/escape-app:latest ..
@@ -121,6 +128,9 @@ Risque : Les étapes 6 et 7 (SBOM et Signing) n'existent pas.
 Impact : Il est impossible de savoir exactement ce qui tourne dans le conteneur en cas d'audit de sécurité, et rien ne garantit que l'image téléchargée par le serveur de production est bien celle construite par votre CI.
 
 Mitigation : Générer un SBOM avec syft pour lister tous les composants, et signer l'image cryptographiquement avec cosign.
+=======
+
+>>>>>>> fa5f7a0 (Setup local repo for project)
 ---
 
 ### M4 — Build context leakage (15 pts)Prouver qu’un fichier “qui ne devrait pas” se retrouve dans l’image
@@ -128,6 +138,7 @@ Mitigation : Générer un SBOM avec syft pour lister tous les composants, et sig
 Piste : `.dockerignore`
 
 ---
+<<<<<<< HEAD
 Pas de ficjer .dockerignore donc tout les fichiers sont executés. A l'éxécution de la commande ls -la /app, 
 drwxr-xr-x 1 root root 4096 Feb 20 07:52 .
 drwxr-xr-x 1 root root 4096 Feb 20 07:53 ..
@@ -144,6 +155,9 @@ drwxrwxrwx 2 root root 4096 Feb 19 14:24 vault
 drwxrwxrwx 2 root root 4096 Feb 19 14:24 web
 
 Et du coup le .env se balade ici.
+=======
+
+>>>>>>> fa5f7a0 (Setup local repo for project)
 ## Missions Blue Team
 
 ### B1 — Mitiger SSRF proprement (35 pts)
