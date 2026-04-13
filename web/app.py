@@ -5,10 +5,10 @@ import requests
 from requests.exceptions import RequestException
 from flask import Flask, request, jsonify, abort, make_response, render_template_string
 
-# === [BlueTeam] AJOUTS MINIMAUX (SSRF) ===
-import socket                     # [BT] pour résoudre le DNS
-import ipaddress                  # [BT] pour tester IP privées/loopback/etc.
-from urllib.parse import urlsplit # [BT] pour parser l’URL + hostname/port
+# === [BlueTeam] AJOUTS (SSRF) ===
+import socket                     # résolution DNS
+import ipaddress                  # détection IP privées/loopback/etc.
+from urllib.parse import urlsplit # parsing URL (scheme/hostname/port)
 
 app = Flask(__name__)
 
@@ -46,15 +46,13 @@ def whoami():
     resp.set_cookie("session", "dev", httponly=False, samesite="Lax")
     return resp
 
-# SSRF: fetch arbitrary URL from server side
-# Pedagogical angle: should implement allowlist + block internal ranges + DNS rebinding protection
 
+# === [BlueTeam] SSRF MITIGATION ===
 
-# === [BlueTeam] AJOUTS MINIMAUX (SSRF) ===
-# Objectif : interdire l’accès à 'vault' depuis /fetch + bloquer IP privées/loopback/etc. :contentReference[oaicite:4]{index=4}
-BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "vault", "web"}  # [BT] hostnames internes
-BLOCKED_SUFFIXES = (".local", ".internal", ".docker", ".lan")                 # [BT] suffixes internes
-MAX_REDIRECTS = 3                                                            # [BT] redirections contrôlées
+# Objectif : interdire l’accès à 'vault' depuis /fetch + bloquer IP privées/loopback/etc.
+BLOCKED_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "vault", "web"}  # hostnames internes
+BLOCKED_SUFFIXES = (".local", ".internal", ".docker", ".lan")                 # suffixes internes
+MAX_REDIRECTS = 3                                                            # redirections contrôlées
 
 def _is_forbidden_ip(ip: str) -> bool:
     a = ipaddress.ip_address(ip)
@@ -70,8 +68,7 @@ def _is_forbidden_ip(ip: str) -> bool:
 def _resolve_all(host: str, port: int) -> set[str]:
     ips = set()
     for family, _type, _proto, _canon, sockaddr in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM):
-        # sockaddr[0] contient l’IP (IPv4 ou IPv6)
-        ips.add(sockaddr[0])
+        ips.add(sockaddr[0])  # IPv4 ou IPv6
     return ips
 
 def _validate_url(raw_url: str) -> tuple[bool, str]:
@@ -120,9 +117,10 @@ def _validate_url(raw_url: str) -> tuple[bool, str]:
 
 def _safe_get_with_redirects(start_url: str):
     """
-    [BT] Redirections contrôlées :
-      - pas de allow_redirects automatique
-      - validation de chaque hop
+    Redirections contrôlées + gestion d’erreur sans fuite d’info :
+      - allow_redirects=False
+      - re-validation à chaque saut
+      - message client générique (pas de "details": str(e))
     """
     url = start_url
     for _ in range(MAX_REDIRECTS + 1):
@@ -133,7 +131,7 @@ def _safe_get_with_redirects(start_url: str):
         try:
             r = requests.get(url, timeout=2, allow_redirects=False)
         except RequestException:
-            # [BT] suppression de la fuite "details": str(e) côté client :contentReference[oaicite:5]{index=5}
+            # IMPORTANT: pas de fuite "details"
             return None, (502, "Upstream request failed")
 
         # Gérer manuellement les redirections (301/302/303/307/308)
@@ -149,6 +147,8 @@ def _safe_get_with_redirects(start_url: str):
     return None, (502, "Too many redirects")
 
 
+# === /fetch — SSRF bloquée + TRY   ===
+
 @app.get("/fetch")
 def fetch():
     url = request.args.get("url", "")
@@ -158,8 +158,14 @@ def fetch():
     if url.startswith("file://"):
         return jsonify({"error": "file:// URLs are not allowed"}), 400
 
-    # === [BlueTeam] AJOUT: blocage SSRF (vault / IP privées / hostnames internes) ===
-    r, err = _safe_get_with_redirects(url)
+    # try/except ici, mais on ne fait PAS requests.get(url) directement,
+    # sinon cela contourne la mitigation SSRF. On appelle la fonction sécurisée.
+    try:
+        r, err = _safe_get_with_redirects(url)
+    except RequestException:
+        # Erreur générique (pas de champ "details" -> évite fuite d'info)
+        return jsonify({"error": "Upstream request failed"}), 502
+
     if err is not None:
         status, reason = err
         if status == 403:
@@ -172,17 +178,30 @@ def fetch():
         {"Content-Type": r.headers.get("Content-Type", "text/plain")},
     )
 
-# Admin protected by static token (still bad)
+
+
+# === /admin — Authorization header    ===
+
 @app.get("/admin")
 def admin():
-    token = request.args.get("token", "")
-    if token != os.getenv("ADMIN_TOKEN", ""):
+    """
+    Auth via header Authorization: Bearer <ADMIN_TOKEN>.
+    """
+    expected = os.getenv("ADMIN_TOKEN", "")
+    if not expected:
         abort(403)
+
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header != f"Bearer {expected}":
+        abort(403)
+
     return jsonify({
         "admin": True,
         "flag_supply_chain": os.getenv("FLAG_SUPPLY", "FLAG{missing}"),
+        "message": "Authentication secured via Authorization header",
         "hint": "Try auditing the pipeline scripts & dependencies. Also check internal services.",
     })
+
 
 @app.get("/docs")
 def docs():
@@ -198,5 +217,5 @@ def docs():
 """)
 
 if __name__ == "__main__":
-    # === [BlueTeam] MODIF: éviter debug=True en environnement container (réduit fuites 500)
+    # pas de debug en container (réduit fuites d’erreurs)
     app.run(host="0.0.0.0", port=5000, debug=False)
