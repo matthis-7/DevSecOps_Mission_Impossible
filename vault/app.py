@@ -33,5 +33,5 @@ def debug():
     return jsonify({"service": "vault", "debug": True})
 
 if __name__ == "__main__":
-    # === [BlueTeam] MODIF: éviter debug=True (réduit fuites 500) :contentReference[oaicite:12]{index=12} ===
+    # === [BlueTeam] MODIF: éviter debug=True (réduit fuites 500)
     app.run(host="0.0.0.0", port=7000, debug=False)
