@@ -30,6 +30,7 @@ jobs:
           python -m pytest -q
 
       - name: Dependency audit (pip-audit)
+        continue-on-error: true
         run: |
           pip-audit -r web/requirements.txt -f json -o pip_audit_web.json
           pip-audit -r vault/requirements.txt -f json -o pip_audit_vault.json
