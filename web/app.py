@@ -199,7 +199,6 @@ def admin():
         "admin": True,
         "flag_supply_chain": os.getenv("FLAG_SUPPLY", "FLAG{missing}"),
         "message": "Authentication secured via Authorization header",
-        "hint": "Try auditing the pipeline scripts & dependencies. Also check internal services.",
     })
 
 
