@@ -198,5 +198,5 @@ def docs():
 """)
 
 if __name__ == "__main__":
-    # === [BlueTeam] MODIF: éviter debug=True en environnement container (réduit fuites 500) :contentReference[oaicite:6]{index=6} ===
+    # === [BlueTeam] MODIF: éviter debug=True en environnement container (réduit fuites 500)
     app.run(host="0.0.0.0", port=5000, debug=False)
