@@ -1,20 +1,23 @@
-# Image de base (pinnée)
-FROM python:3.11.4-slim
+# 1. Image pinnée avec un hash SHA256 précis
+FROM python:3.11.4-slim@sha256:0b23cfb7425d065008b778022a17b1551c82f8b4866ee5a7a200084b7e2eafbf
 
-# Dossier de travail
+# 2. Création d'un utilisateur non-root
+RUN useradd -m appuser
 WORKDIR /app
 
-# Copier les dépendances
-COPY web/requirements.txt .
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
-# Installer les dépendances
-RUN pip install --no-cache-dir -r requirements.txt
+# Le .dockerignore filtrera automatiquement les secrets
+COPY . /app
 
-# Copier le code
-COPY web/ .
+RUN pip install --no-cache-dir -r web/requirements.txt && \
+    pip install --no-cache-dir -r vault/requirements.txt
 
-# Exposer le port
+# 3. On bascule sur l'utilisateur restreint
+USER appuser
 EXPOSE 5000
 
-# Lancer l'application
-CMD ["python", "app.py"]
+CMD ["python","web/app.py"]
